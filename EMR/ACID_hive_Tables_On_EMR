@@ -1,0 +1,358 @@
+(insert_only) or transactional table 
+
+    transactional table = Any Storage format , not restricted to ORC.
+    Does not support update and delete capability. 
+
+ (update and delete) or CRUD transactional table
+
+    You create a CRUD transactional table having ACID (atomic, consistent, isolated, and durable) properties when you need a managed table that you can update, delete, and merge
+
+
+
+Test 1 : Tried creating table on AWS EMR 5.30.0 using the DDL provided : Unable to do so - it failed with the below error. 
+One cannot create a non-bucketed . i.e. Table must have CLUSTERED BY column. Hence the query failed . This makes me wonder how did you create the table or I do believe you did not create the tables cos it was AS IS migration from cloudera to AWS.i.e. in AWS one cannot create an ORC table with transaction = true without having CLUSTERED BY column.
+
+      hive> 
+          > 
+          > 
+          > 
+          > CREATE TABLE `tbl_taxonomy`(
+          >   `taxonomycode` string,
+          >   `macrospecialty` string,
+          >   `macrosecondary` string,
+          >   `specialty` string,
+          >   `taxonomytype` string,
+          >   `numberofnpi2015` string,
+          >   `numberofnpi2016` string,
+          >   `physicianornot` string,
+          >   `pcporspec` string,
+          >   `proceduralist_or_surgeon` string,
+          >   `referrals` string,
+          >   `facilityclass` string)
+          > ROW FORMAT SERDE
+          >   'org.apache.hadoop.hive.ql.io.orc.OrcSerde'
+          > STORED AS INPUTFORMAT
+          >   'org.apache.hadoop.hive.ql.io.orc.OrcInputFormat'
+          > OUTPUTFORMAT
+          >   'org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat'
+          > LOCATION
+          >   's3://my-s3-bucket/hive_warehouse/tbl_taxonomy/'
+          > TBLPROPERTIES (
+          >   'bucketing_version'='2',
+          >   'external.table.purge'='true',
+          >   'transactional'='true',
+          >   'transactional_properties'='default')
+          > ;
+      FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTask. MetaException(message:The table must be bucketed and stored using an ACID compliant format (such as ORC))
+      hive> 
+
+Test 2: Created a regular hive ORC table and tried querying + count(*) => Table creation went fine ( Non acid table ) But querying the table did not return anything cos the underlying storage does not expected directory structure. 
+
+
+         hive> 
+            > 
+            > 
+            > CREATE TABLE `tbl_taxonomy`(
+            >    `taxonomycode` string,
+            >    `macrospecialty` string,
+            >    `macrosecondary` string,
+            >    `specialty` string,
+            >    `taxonomytype` string,
+            >    `numberofnpi2015` string,
+            >    `numberofnpi2016` string,
+            >    `physicianornot` string,
+            >    `pcporspec` string,
+            >    `proceduralist_or_surgeon` string,
+            >    `referrals` string,
+            >    `facilityclass` string)
+            >  ROW FORMAT SERDE
+            >    'org.apache.hadoop.hive.ql.io.orc.OrcSerde'
+            >  STORED AS INPUTFORMAT
+            >    'org.apache.hadoop.hive.ql.io.orc.OrcInputFormat'
+            >  OUTPUTFORMAT
+            >    'org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat'
+            >  LOCATION
+            >    's3://my-s3-bucket/hive_warehouse/tbl_taxonomy/';
+        OK
+        Time taken: 1.916 seconds
+        hive> 
+            > 
+            > 
+            > select * from tbl_taxonomy;
+        OK
+        Time taken: 0.093 seconds
+        hive> 
+            > 
+            > select count(*) from tbl_taxonomy;
+        Query ID = hadoop_20210804042839_f9dc6484-90f9-402e-a4df-52c9d8373dc7
+        Total jobs = 1
+        Launching Job 1 out of 1
+        Tez session was closed. Reopening...
+        Session re-established.
+        Status: Running (Executing on YARN cluster with App id application_1628035355483_0004)
+
+        ----------------------------------------------------------------------------------------------
+                VERTICES      MODE        STATUS  TOTAL  COMPLETED  RUNNING  PENDING  FAILED  KILLED  
+        ----------------------------------------------------------------------------------------------
+        Map 1            container     SUCCEEDED      0          0        0        0       0       0  
+        Reducer 2 ...... container     SUCCEEDED      1          1        0        0       0       0  
+        ----------------------------------------------------------------------------------------------
+        VERTICES: 01/02  [==========================>>] 100%  ELAPSED TIME: 5.14 s     
+        ----------------------------------------------------------------------------------------------
+        OK
+        0
+        Time taken: 10.792 seconds, Fetched: 1 row(s)
+        hive> 
+
+Test 3 : Then I created a brand new ACID table as below :I was able to create it successfully , insert the data and then query it as well as you can see below  :
+  
+    > CREATE TABLE acid_tbl (key INT, value STRING, action STRING)
+      > PARTITIONED BY (trans_date DATE)
+      > CLUSTERED BY (key) INTO 3 BUCKETS
+      > STORED AS ORC
+      > LOCATION 's3://my-s3-bucket/hive_warehouse/acid_tbl' 
+      > TBLPROPERTIES ('transactional'='true');
+    OK
+    Time taken: 2.354 seconds
+    hive> 
+
+        > INSERT INTO acid_tbl PARTITION (trans_date) VALUES
+           > (1, 'val1', 'insert', '2020-08-01'),
+           > (2, 'val2', 'insert', '2020-08-01'),
+           > (3, 'val3', 'insert', '2020-08-01'),
+           > (4, 'val4', 'insert', '2020-08-01'),
+           > (5, 'val5', 'insert', '2020-08-01');
+       Query ID = hadoop_20210804041738_64c68e28-6581-4027-ab5f-4675c3c19060
+       Total jobs = 1
+       Launching Job 1 out of 1
+       Tez session was closed. Reopening...
+       Session re-established.
+       Status: Running (Executing on YARN cluster with App id application_1628035355483_0002)
+
+       ----------------------------------------------------------------------------------------------
+               VERTICES      MODE        STATUS  TOTAL  COMPLETED  RUNNING  PENDING  FAILED  KILLED  
+       ----------------------------------------------------------------------------------------------
+       Map 1 .......... container     SUCCEEDED      1          1        0        0       0       0  
+       Reducer 2 ...... container     SUCCEEDED      2          2        0        0       0       0  
+       ----------------------------------------------------------------------------------------------
+       VERTICES: 02/02  [==========================>>] 100%  ELAPSED TIME: 11.86 s    
+       ----------------------------------------------------------------------------------------------
+       Loading data to table default.acid_tbl partition (trans_date=null)
+
+       Loaded : 1/1 partitions.
+       	 Time taken to load dynamic partitions: 1.775 seconds
+       	 Time taken for adding to write entity : 0.003 seconds
+       OK
+       Time taken: 23.181 seconds
+       hive> 
+           > 
+           > 
+           > SELECT * FROM acid_tbl;
+       OK
+       3	val3	insert	2020-08-01
+       1	val1	insert	2020-08-01
+       4	val4	insert	2020-08-01
+       2	val2	insert	2020-08-01
+       5	val5	insert	2020-08-01
+       Time taken: 0.176 seconds, Fetched: 5 row(s)
+       hive> 
+
+
+Test 4 : I removed the folder "Delta* " and just place bucket_000 file inside the table folder as :
+
+s3://my-s3-bicket/hive_warehouse/tbl_taxonomy/bucket_00000
+
+
+Still the select * did not work and it failed with the below error But select count(*) did work as you can see below .
+It seems there is a data issue where in some of the columns within the table has integer value . And when hive tries to convert the data to text/string the type casting fails. It is pretty hard for me to tell you what column it could be cos we do not have any knowledge about the data. 
+
+
+      > select * from tbl_taxonomy;
+      OK
+      Failed with exception java.io.IOException:org.apache.hadoop.hive.ql.metadata.HiveException: java.lang.ClassCastException: org.apache.hadoop.io.IntWritable cannot be cast to org.apache.hadoop.io.Text
+      Time taken: 0.079 seconds
+      hive> 
+      > 
+      > 
+      > 
+      > select count(*) from tbl_taxonomy;
+      Query ID = hadoop_20210804043428_ded3b68b-8b42-4330-9615-7add1762bb87
+      Total jobs = 1
+      Launching Job 1 out of 1
+      Tez session was closed. Reopening...
+      Session re-established.
+      Status: Running (Executing on YARN cluster with App id application_1628035355483_0005)
+
+      ----------------------------------------------------------------------------------------------
+          VERTICES      MODE        STATUS  TOTAL  COMPLETED  RUNNING  PENDING  FAILED  KILLED  
+      ----------------------------------------------------------------------------------------------
+      Map 1 .......... container     SUCCEEDED      1          1        0        0       0       0  
+      Reducer 2 ...... container     SUCCEEDED      1          1        0        0       0       0  
+      ----------------------------------------------------------------------------------------------
+      VERTICES: 02/02  [==========================>>] 100%  ELAPSED TIME: 7.90 s     
+      ----------------------------------------------------------------------------------------------
+      OK
+      856
+      Time taken: 12.473 seconds, Fetched: 1 row(s)
+      hive> 
+
+TEST 5 : Finally I ran the test to run CTAS to create a brand new table from the above table but it also failed with the same err as above in TEST 4.
+
+
+      > create table non_acid_new as select * from tbl_taxonomy;
+      Query ID = hadoop_20210804044837_292b7576-7824-4675-9a36-7bbc04315cf7
+      Total jobs = 1
+      Launching Job 1 out of 1
+      Status: Running (Executing on YARN cluster with App id application_1628035355483_0006)
+
+      ----------------------------------------------------------------------------------------------
+              VERTICES      MODE        STATUS  TOTAL  COMPLETED  RUNNING  PENDING  FAILED  KILLED  
+      ----------------------------------------------------------------------------------------------
+      Map 1            container       RUNNING      1          0        0        1       4       0  
+      ----------------------------------------------------------------------------------------------
+      VERTICES: 00/01  [>>--------------------------] 0%    ELAPSED TIME: 23.81 s    
+      ----------------------------------------------------------------------------------------------
+      Status: Failed
+      Vertex failed, vertexName=Map 1, vertexId=vertex_1628035355483_0006_1_00, diagnostics=[Task failed, taskId=task_1628035355483_0006_1_00_000000, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : attempt_1628035355483_0006_1_00_000000_0:java.lang.RuntimeException: java.lang.RuntimeException: org.apache.hadoop.hive.ql.metadata.HiveException: Hive Runtime Error while processing row [Error getting row data with exception java.lang.ClassCastException: org.apache.hadoop.io.IntWritable cannot be cast to org.apache.hadoop.io.Text
+      	at org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableStringObjectInspector.getPrimitiveJavaObject(WritableStringObjectInspector.java:46)
+
+TEST 6 : Copying ACID table data to Non-Acid Table Regular ORC table :  Everything works as expected. This proves there is an underlying data issue which is restircting to create a Non Acid table from an Acid table.
+
+
+      > CREATE TABLE acid_tbl_emr (key INT, value STRING, action STRING)
+         >    PARTITIONED BY (trans_date DATE)
+         >    CLUSTERED BY (key) INTO 3 BUCKETS
+         >    STORED AS ORC
+         >    LOCATION 's3://my-s3-bucket/hive_warehouse/acid_tbl' 
+         >    TBLPROPERTIES ('transactional'='true');
+      OK
+
+
+      > SET hive.support.concurrency=true;
+      hive> SET hive.exec.dynamic.partition.mode=nonstrict;
+      hive> SET hive.txn.manager=org.apache.hadoop.hive.ql.lockmgr.DbTxnManager;
+
+
+      > INSERT INTO acid_tbl_emr PARTITION (trans_date) VALUES (1, 'val1', 'insert', '2020-08-01');
+      Query ID = hadoop_20210804060639_fbf605c3-3b8c-4fdd-8be2-d45096fc95c6
+      Total jobs = 1
+      Launching Job 1 out of 1
+      Status: Running (Executing on YARN cluster with App id application_1628035355483_0013)
+
+      ----------------------------------------------------------------------------------------------
+             VERTICES      MODE        STATUS  TOTAL  COMPLETED  RUNNING  PENDING  FAILED  KILLED  
+      ----------------------------------------------------------------------------------------------
+      Map 1 .......... container     SUCCEEDED      1          1        0        0       0       0  
+      Reducer 2 ...... container     SUCCEEDED      2          2        0        0       0       0  
+      ----------------------------------------------------------------------------------------------
+      VERTICES: 02/02  [==========================>>] 100%  ELAPSED TIME: 8.95 s     
+      ----------------------------------------------------------------------------------------------
+      Loading data to table default.acid_tbl_emr partition (trans_date=null)
+
+      Loaded : 1/1 partitions.
+        Time taken to load dynamic partitions: 1.011 seconds
+        Time taken for adding to write entity : 0.002 seconds
+      OK
+      Time taken: 17.817 seconds
+
+
+
+      hive> select * from default.acid_tbl_emr;
+      OK
+      3	val3	insert	2020-08-01
+      1	val1	insert	2020-08-01
+      4	val4	insert	2020-08-01
+      1	val1	insert	2020-08-01
+      2	val2	insert	2020-08-01
+      5	val5_1	update	2020-08-01
+      Time taken: 0.13 seconds, Fetched: 6 row(s)
+      hive> 
+          > 
+
+          
+
+      > show create table default.acid_tbl_emr;
+      OK
+      CREATE TABLE `default.acid_tbl_emr`(
+      `key` int, 
+      `value` string, 
+      `action` string)
+      PARTITIONED BY ( 
+      `trans_date` date)
+      CLUSTERED BY ( 
+      key) 
+      INTO 3 BUCKETS
+      ROW FORMAT SERDE 
+      'org.apache.hadoop.hive.ql.io.orc.OrcSerde' 
+      STORED AS INPUTFORMAT 
+      'org.apache.hadoop.hive.ql.io.orc.OrcInputFormat' 
+      OUTPUTFORMAT 
+      'org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat'
+      LOCATION
+      's3://my-s3-bucket/hive_warehouse/acid_tbl'
+      TBLPROPERTIES (
+      'transactional'='true', 
+      'transient_lastDdlTime'='1628057100')
+      Time taken: 0.084 seconds, Fetched: 20 row(s)
+      hive> 
+
+
+
+      > create table new_tbl_non_acid_from_acid as select * from default.acid_tbl_emr;
+      Query ID = hadoop_20210804060757_b6ca47e5-fea5-4b07-8417-380ea38fe2f6
+      Total jobs = 1
+      Launching Job 1 out of 1
+      Status: Running (Executing on YARN cluster with App id application_1628035355483_0013)
+
+      ----------------------------------------------------------------------------------------------
+              VERTICES      MODE        STATUS  TOTAL  COMPLETED  RUNNING  PENDING  FAILED  KILLED  
+      ----------------------------------------------------------------------------------------------
+      Map 1 .......... container     SUCCEEDED      3          3        0        0       0       0  
+      ----------------------------------------------------------------------------------------------
+      VERTICES: 01/01  [==========================>>] 100%  ELAPSED TIME: 12.41 s    
+      ----------------------------------------------------------------------------------------------
+      Moving data to directory hdfs://ip-xx-31-41-20.us-west-2.compute.internal:8020/user/hive/warehouse/new_tbl_non_acid_from_acid
+      OK
+      Time taken: 13.309 seconds
+      hive> 
+          > 
+          > 
+          > select * from new_tbl_non_acid_from_acid;
+      OK
+      3	val3	insert	2020-08-01
+      1	val1	insert	2020-08-01
+      4	val4	insert	2020-08-01
+      1	val1	insert	2020-08-01
+      2	val2	insert	2020-08-01
+      5	val5_1	update	2020-08-01
+      Time taken: 0.091 seconds, Fetched: 6 row(s)
+      hive> show create table new_tbl_non_acid_from_acid;
+      OK
+      CREATE TABLE `new_tbl_non_acid_from_acid`(
+        `key` int, 
+        `value` string, 
+        `action` string, 
+        `trans_date` date)
+      ROW FORMAT SERDE 
+        'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+      STORED AS INPUTFORMAT 
+        'org.apache.hadoop.mapred.TextInputFormat' 
+      OUTPUTFORMAT 
+        'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+      LOCATION
+        'hdfs://ip-xx-xx-xx-xx.us-west-2.compute.internal:8020/user/hive/warehouse/new_tbl_non_acid_from_acid'
+      TBLPROPERTIES (
+        'transient_lastDdlTime'='1628057290')
+      Time taken: 0.032 seconds, Fetched: 15 row(s)
+
+=======================================================
+
+CONCLUSION :
+
+1. ACID tables cannot be converted to Non-Acid table . In case when these tables were created on the On-prem/or any other distribution cluster as an ORC with transactional=true . Hence these were created as ACID compliant tables 100%. 
+
+2. On EMR 5.30.0 if one tries to create a brand new ACID compliant ORC table and then moves the data from an ACID to Non-Acid it totally works fine as proved with the Test 6 . 
+
+3. When moving data from an ACID to Non-acid table if it fails with the type conversion error as provided above Test 4. This proves there is an issue with the underlying data . 
+
+4. ORC data profiling can be done easily using  : hive --orcfiledump -d < orc file location > .
