@@ -1,0 +1,1 @@
+spark-submit --master yarn --deploy-mode client  --class SparkPi /home/hadoop/sparksample/target/scala-2.11/spark-sample_2.11-1.0.jar --jars /usr/lib/spark/jars/postgresql-42.2.8.jar --driver-class-path /usr/lib/spark/jars/postgresql-42.2.8.jar

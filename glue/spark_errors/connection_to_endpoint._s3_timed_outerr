@@ -1,0 +1,17 @@
+In general  - if the subnet used with the glue connection i.e. "[connection]" is public subnet and it has IGW on its routing table. 
+
+When job is created using connection, Glue attach an ENI in underlying worker and assign it Private IP from the subnet used in the connection. By default secret manager endpoint get resolved to public endpoint and hence it can not be reached from the private ip.
+
+To access an endpoint for any given service from Glue job, you need to follow any one of the below option:
+
+    1. Create private subnet, use Nat Gateway on private subnet routing table to allow private subnet traffic to internet to a given service  endpoint is resolved to public ip. Then create a connection using this subnet and run the job again.
+    
+    OR
+
+    2. Create VPC endpoint for secrets manager for your public subnet. This will allow access to a given service endpoint using private ip from the public subnet. When you use VPC endpoint, the  Secret manager endpoint will be resolved to private ip and that will be accessible using private ip from public subnet.
+
+Please refer [1] and [2] for detail around VPC endpoint for secret manager as an example. 
+
+Reference:
+[1] https://docs.aws.amazon.com/secretsmanager/latest/userguide/vpc-endpoint-overview.html
+[2] https://aws.amazon.com/blogs/security/how-to-connect-to-aws-secrets-manager-service-within-a-virtual-private-cloud/

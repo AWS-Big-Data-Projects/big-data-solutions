@@ -1,0 +1,47 @@
+Spark Metadata Fetch Failed Exception: Missing an output location for shuffle
+
+ERROR STACKTRACE will look like : 
+
+2020-11-19 19:38:52,874 ERROR executionlogs:128 - g-e77a768b31735ca3fe3ee126fbf6d5ed62dca00d:2020-11-19 19:38:52,871 WARN [task-result-getter-0] scheduler.TaskSetManager (Logging.scala:logWarning(66)): Lost task 0.2 in stage 289.3 (TID 132629, 172.34.154.194, executor 1640): FetchFailed(null, shuffleId=41, mapId=-1, reduceId=0, message=
+org.apache.spark.shuffle.MetadataFetchFailedException: Missing an output location for shuffle 41
+
+Problem definition : 
+
+MetadataFetchFailedException is thrown when a MapOutputTracker on an executor could not find requested shuffle map outputs for partitions in local cache and tried to fetch them remotely from the driver's MapOutputTracker
+
+That could lead to few conclusions:
+
+The driver's memory issues
+The executors' memory issues
+Executors being lost
+
+Please review the logs looking for issues reported as "Executor lost" INFO messages and/or review web UI's Executors page and see how the executors work
+
+
+RootCause :
+
+For MetadataFetchFailedException, it usually happens when one executor suddenly being killed or terminated, but this executor has some shuffle output, then when another executor try to fetch metadata of this shuffle output, exception happens.
+
+For FetchFailedException, it usually happens when one executor hosting some shuffle output is too busy or temporily dead. This could be caused by slow disk IO or network IO. It could be common when you have over 1000 executors.
+
+
+1. Primarily due to repartition 
+2. more memory to the worker node 
+
+Resolution :
+
+1) You could try to run with more partitions (do a repartition on your dataframe). Memory issues typically arise when one or more partitions contain more data than will fit in memory.
+
+2) Look in the log files on the failing nodes. You want to look for the text "Killing container". Change the Worker type from say Standard to G1.x or G1.x to G2.x
+
+3) --conf spark.blacklist.enabled=true - This can be set either at the job level using the --conf job argument --conf spark.blacklist.enabled=true or in the job script as a SparkConf before creating the SparkContext.
+
+The blacklist feature will make sure that a task is not rescheduled on the failed executor more than once. This will prevent the race condition from happening.Details on spark executor blacklist - https://blog.cloudera.com/blacklisting-in-apache-spark/
+
+4)  leaded to MetadataFetchFailedException that in map stage not reduce stage . just do df_rdd.repartition(nums) before reduceByKey()
+
+
+5) You can enable spark debug level logs by doing glueContext.sparkContext.setLogLevel("DEBUG") for troubleshooting purpose.
+
+
+

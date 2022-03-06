@@ -1,0 +1,68 @@
+{
+  "objects": [
+    {
+      "directoryPath": "s3://xxx-xx-xx/ddb_to_s3/latest_run",
+      "dataFormat": {
+        "ref": "DataFormatId_pk6BE"
+      },
+      "name": "DefaultDataNode2",
+      "id": "DataNodeId_vRA7t",
+      "type": "S3DataNode"
+    },
+    {
+      "name": "DefaultDynamoDBDataFormat1",
+      "column": "id bigint",
+      "id": "DynamoDBDataFormatId_InlDK",
+      "type": "DynamoDBExportDataFormat"
+    },
+    {
+      "output": {
+        "ref": "DataNodeId_vRA7t"
+      },
+      "input": {
+        "ref": "DataNodeId_wHAKo"
+      },
+      "scriptUri": "s3://aws-isgaur-logs/ddb_to_s3/ishan.hql",
+      "name": "DefaultHiveActivity1",
+      "id": "HiveActivityId_qi7kk",
+      "runsOn": {
+        "ref": "EmrClusterId_ar4g5"
+      },
+      "type": "HiveActivity"
+    },
+    {
+      "dataFormat": {
+        "ref": "DynamoDBDataFormatId_InlDK"
+      },
+      "name": "DefaultDataNode1",
+      "id": "DataNodeId_wHAKo",
+      "type": "DynamoDBDataNode",
+      "region": "us-west-2",
+      "tableName": "ProductCatalog"
+    },
+    {
+      "name": "DefaultDataFormat1",
+      "column": "id bigint",
+      "id": "DataFormatId_pk6BE",
+      "type": "DynamoDBDataFormat"
+    },
+    {
+      "name": "DefaultEmrCluster1",
+      "keyPair": "training_tst",
+      "releaseLabel": "emr-5.29.0",
+      "id": "EmrClusterId_ar4g5",
+      "region": "us-west-2",
+      "type": "EmrCluster"
+    },
+    {
+      "failureAndRerunMode": "CASCADE",
+      "resourceRole": "DataPipelineDefaultResourceRole",
+      "role": "DataPipelineDefaultRole",
+      "pipelineLogUri": "s3://xx-xx-xx/ddb_to_s3/logs/",
+      "scheduleType": "ONDEMAND",
+      "name": "Default",
+      "id": "Default"
+    }
+  ],
+  "parameters": []
+}

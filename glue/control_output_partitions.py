@@ -1,0 +1,10 @@
+logs_DyF = glueContext.create_dynamic_frame.from_catalog(database="amzn_review", table_name="mydata_amazonreviews", transformation_ctx = "datasource0")
+logs_DF=logs_DyF.toDF()
+logs_DF.show()
+print (logs_DF.show())
+print ("The number of partitions in source is")
+print (logs_DF.rdd.getNumPartitions())
+logs_DF=logs_DF.repartition(50)
+
+logs_DyF2=DynamicFrame.fromDF(logs_DF, glueContext, "logs_DyF2")
+datasink2 = glueContext.write_dynamic_frame.from_options( frame = logs_DyF2, connection_type = "s3", connection_options = {"path": "s3://xxx-xxx/xxx/output/", "partitionKeys" : ["product_category"] }, format = "parquet", transformation_ctx = "datasink2")

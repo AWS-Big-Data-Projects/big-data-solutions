@@ -1,0 +1,48 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "AWS::CloudFormation::Designer": {
+            "e31888bf-15d1-4df1-a45f-b42518a1a2cb": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 47.005706787109375,
+                    "y": 46.017051696777344
+                },
+                "z": 0,
+                "embeds": []
+            }
+        }
+    },
+    "Resources": {
+        "crawlerishan": {
+            "Type": "AWS::Glue::Crawler",
+            "Properties": {
+                "DatabaseName": "datacsv",
+                "Name": "tblbfsbookinglog",
+                "Role": "arn:aws:iam::XXXXXXX:role/service-role/AWSGlueServiceRole-defaultRole",
+                "TablePrefix": "crawl_",
+                "Tags":
+                    {
+                        "Owner": "bbuhyl",
+                        "Name": "testTag"
+                    }
+                ,
+                "Targets": {
+                    "S3Targets": [
+                        {
+                            "Path": "s3://aws-XX-XXX/csv_file_6848275181/"
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "e31888bf-15d1-4df1-a45f-b42518a1a2cb"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,17 @@
+Scenario 1:
+
+If the 'numberMaxNeededExecutors' metric is reporting very low values , this typically indicates the number of partitions is too low (your dataset is partitioned in a small number of partitions, which causes a low number of tasks, which causes a low number of executors).
+
+Spark is not launching additional executors because the number of partitions does not need it. As an example : 
+
+Considering your job is running with 25 DPUs of the Standard worker type, your job is severly underutilizing the provided resources - each DPU in Standard runs 2 executors, so 21 DPUs are not being used.
+
+Now as to why the number of partitions is low: if your code does not specify any kind of custom partitioning, Spark will automatically use the default one. When reading from S3, this means Spark will create:
+
+        1. One partition for each file in the input path, if the files are smaller than 128 MiB or they are compressed in a non-splittable format.
+
+        2. If your files are splittable and they are larger than 128 MiB, one partition per each 128 MiB of data.
+
+The recommendation is to analyze the file sizes and formats of the data being processed here. In any case, you should be able to increase parallelism easily by simply doing a repartition operation on the DynamicFrames/DataFrame, set to a value that guarantees maximum resource utilization.
+
+Each Spark executor in Glue handles 4 tasks concurrently, which means that with 25 DPU and the Standard worker type 188 partitions or more would yield you maximum resource utilization.

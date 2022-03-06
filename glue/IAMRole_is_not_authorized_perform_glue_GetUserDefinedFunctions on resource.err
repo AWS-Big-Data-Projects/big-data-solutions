@@ -1,0 +1,20 @@
+When running spark/hive on AWS EMR using AWS Glue Data catalog - you might run into a problem where application fails with the below error :
+
+
+MetaException(message:User: arn:aws:sts::xx:assumed-role/SC-xx-xx-xx-Role-xx/i-xx is not authorized to perform: glue:GetUserDefinedFunctions on resource: arn:aws:glue:us-west-2:xx:catalog (Service: AWSGlue; Status Code: 400; Error Code: AccessDeniedException; Request ID: xx-xx-xx-xx-xx))
+
+This fix is  available  in >= emr-5.31 and >= emr-6.1.0.
+
+When using the above releases:
+
+For Spark jobs, use the following emr configuration to disable GetUserDefinedFunctios calls.
+
+[
+  {
+    "Classification": "spark-hive-site",
+    "Properties": {
+      "aws.glue.disable-udf": "true"
+    }
+]
+
+For Hive jobs, no additional configs needed. 

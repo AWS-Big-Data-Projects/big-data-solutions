@@ -1,0 +1,3 @@
+When your Glue Job is facing issues with S3 communication and it does not have a Glue Connection attached, and as such the connection would take place over the Internet (from the managed Glue network). 
+
+If suitable, try attempting to use a Glue Connection with your job. You can configured a Glue Connection of type "Network" and specify a Private Subnet in your VPC. This connection now gives you control over which Subnet is used in the networking, and thus you can add a VPC Endpoint for S3, to ensure your traffic to S3 (for that region) remains routed within the the VPC (not needing internet breakout). If you also require internet breakout for the job, then a NAT Gateway is the way to achieve it. 
